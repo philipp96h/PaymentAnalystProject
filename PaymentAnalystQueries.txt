@@ -1,0 +1,210 @@
+RFM 
+WITH
+  Product_RFM AS (
+  SELECT
+    string_field_1,
+    MAX(order_purchase_timestamp) AS last_purchase_date,
+    COUNT(DISTINCT order_id) AS frequency,
+    SUM(price) AS total_revenue
+  FROM
+    `olist_db.olist_orders_dataset`
+  JOIN
+    `olist_db.olist_order_items_dataset` oi
+  USING
+    (order_id)
+  JOIN
+    `olist_db.olist_products_dataset` pd
+  ON
+    pd.product_id = oi.product_id
+  JOIN
+    olist_db.product_category_name_translation pcnt
+  ON
+    pd.product_category_name = pcnt.string_field_0
+  GROUP BY
+    1 ),
+  T1 AS(
+  SELECT
+    string_field_1,
+    DATE_DIFF(DATE('2018-09-03'), DATE(last_purchase_date), DAY) AS recency,
+    frequency,
+    total_revenue,
+    CASE
+      WHEN DATE_DIFF(DATE('2018-09-03'), DATE(last_purchase_date), DAY) <= 10 THEN 'High Recency'
+      WHEN DATE_DIFF(DATE('2018-09-03'), DATE(last_purchase_date), DAY) <= 20 THEN 'Moderate Recency'
+    ELSE
+    'Low Recency'
+  END
+    AS recency_category,
+    CASE
+      WHEN frequency > 1000 THEN 'High Frequency'
+      WHEN frequency BETWEEN 1000
+    AND 500 THEN 'Moderate Frequency'
+
+
+sales trend
+SELECT
+  DATE(order_purchase_timestamp) AS Date,
+  COUNT(ood.order_id) AS amount_order,
+  SUM(payment_value) AS revenue,
+FROM
+  `olist_db.olist_orders_dataset` ood
+JOIN
+  `olist_db.olist_order_reviews_dataset` ord
+ON
+  ood.order_id = ord.order_id
+JOIN
+  `olist_db.olist_order_items_dataset` oid
+ON
+  oid.order_id = ord.order_id
+JOIN
+  `olist_db.olist_products_dataset` opd
+ON
+  opd.product_id = oid.product_id
+JOIN
+  `olist_db.olist_order_payments_dataset` oopd
+ON
+  oopd.order_id = ood.order_id
+GROUP BY
+  1
+ORDER BY
+  1 ASC
+SELECT
+  DATE(DATE_TRUNC(order_purchase_timestamp, WEEK)) AS date_week,
+  ROUND(SUM(payment_value),2) purchase_amount,
+  COUNT(CASE
+      WHEN payment_type = 'credit_card' THEN 1
+  END
+    ) AS amount_credit_card,
+  COUNT(CASE
+      WHEN payment_type = 'voucher' THEN 1
+  END
+    ) AS amount_voucher,
+  COUNT(
+    CASE
+      WHEN payment_type ='not_defined' THEN 1
+  END
+    ) AS amount_not_defined,
+  COUNT(
+    CASE
+      WHEN payment_type ='boleto' THEN 1
+  END
+    ) AS amount_boleto,
+  SUM(CASE
+      WHEN payment_type = 'voucher' THEN payment_value
+  END
+    ) AS sum_voucher,
+  SUM(CASE
+      WHEN payment_type = 'credit_card' THEN payment_value
+  END
+    ) AS sum_creditcard,
+  SUM(CASE
+      WHEN payment_type = 'boleto' THEN payment_value
+  END
+    ) AS boleto,
+  SUM(CASE
+      WHEN payment_type = 'not_defined' THEN payment_value
+  END
+    ) AS sum_notdefined,
+  SUM(CASE
+      WHEN payment_type = 'voucher' THEN payment_installments
+  END
+    ) AS voucher_installments,
+  SUM(CASE
+      WHEN payment_type = 'credit_card' THEN payment_installments
+  END
+    ) AS creditcard_installm,
+  SUM(CASE
+      WHEN payment_type = 'boleto' THEN payment_installments
+  END
+    ) AS boleto_installments,
+  SUM(CASE
+      WHEN payment_type = 'not_defined' THEN payment_installments
+  END
+    ) AS not_def_installm
+FROM
+  `olist_db.olist_orders_dataset` od
+JOIN
+  olist_db.olist_order_payments_dataset pd
+ON
+  od.order_id = pd.order_id
+GROUP BY
+  1
+ORDER BY
+  date_week
+product category sales and revenue
+SELECT
+  COUNT(ood.order_id) AS amount_order,
+  string_field_1,
+  SUM(payment_value) revenue,
+  SUM(payment_value)/COUNT(ood.order_id) avg_order
+FROM
+  `olist_db.olist_orders_dataset` ood
+JOIN
+  `olist_db.olist_order_reviews_dataset` ord
+ON
+  ood.order_id = ord.order_id
+JOIN
+  `olist_db.olist_order_items_dataset` oid
+ON
+  oid.order_id = ord.order_id
+JOIN
+  `olist_db.olist_products_dataset` opd
+ON
+  opd.product_id = oid.product_id
+JOIN
+  `olist_db.olist_order_payments_dataset` oopd
+ON
+  oopd.order_id = ood.order_id
+JOIN
+  `olist_db.product_category_name_translation` pcnt
+ON
+  pcnt.string_field_0 = opd.product_category_name
+GROUP BY
+  2
+ORDER BY
+  revenue desc
+top sellers 
+
+SELECT
+  SUM(payment_value) AS revenue,
+  os.seller_id,
+  SUM(order_item_id) AS amount
+FROM
+  `olist_db.olist_orders_dataset` oo
+JOIN
+  `olist_db.olist_order_reviews_dataset` rd
+ON
+  oo.order_id = rd.order_id
+JOIN
+  `olist_db.olist_order_payments_dataset` op
+ON
+  op.order_id = oo.order_id
+JOIN
+  `olist_db.olist_order_items_dataset` oi
+ON
+  oi.order_id = oo.order_id
+JOIN
+  `olist_db.olist_products_dataset` pd
+ON
+  pd.product_id = oi.product_id
+JOIN
+  `olist_db.olist_sellers_dataset` os
+ON
+  oi.seller_id = os.seller_id
+GROUP BY
+  os.seller_id
+ORDER BY
+  revenue desc
+top sales citys
+SELECT
+  ROUND(SUM(payment_value),2) AS Revenue,
+  seller_city
+FROM
+  `olist_db.olist_orders_dataset` od
+JOIN
+  `olist_db.olist_order_payments_dataset` pd
+ON
+  od.order_id = pd.order_id
+JOIN
+  `olist_db.olist_order_items_dataset` oid
+
